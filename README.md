@@ -17,3 +17,26 @@ et réaliser une initiation pratique sur le jeu de données NSL-KDD.
 ---
 
 ## Structure du projet
+
+IDS-ML-ObservationStage/
+├── docs/          → Rapport, cahier des charges, bibliographie
+├── data/          → Jeu de données NSL-KDD (raw + processed)
+├── notebooks/     → Expérimentations Jupyter
+├── src/           → Scripts Python
+└── results/       → Graphiques et métriques
+
+---
+
+## Outils utilisés
+- Python 3
+- Pandas, NumPy
+- Scikit-learn
+- Matplotlib / Seaborn
+- Jupyter Notebook
+- Git / GitHub
+
+---
+
+## Dataset
+[NSL-KDD](https://www.unb.ca/cic/datasets/nsl.html) – jeu de données de
+référence pour la détection d'intrusion réseau.
