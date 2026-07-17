@@ -200,13 +200,13 @@ if st.session_state.get("analyse_lancee", False):
 
     # Export
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇️ Exporter le journal (CSV)", csv, "journal_ids.csv", "text/csv")
+    st.download_button(" Exporter le journal (CSV)", csv, "journal_ids.csv", "text/csv")
 
 else:
     st.markdown("""
     <div class="bandeau">
         <div>
-            <h1>🛡️ IDS – Console de supervision</h1>
+            <h1> IDS – Console de supervision</h1>
             <p>TERABYTE SOFTWARE · Détection par Machine Learning</p>
         </div>
         <div class="statut">

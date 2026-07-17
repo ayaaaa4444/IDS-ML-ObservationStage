@@ -1,0 +1,7 @@
+Modèle,Types vus,Types inédits
+Arbre de décision,0.793,0.478
+Random Forest,0.758,0.321
+KNN,0.715,0.403
+SVM,0.693,0.497
+Arbre de décision (balanced),0.796,0.411
+Random Forest (balanced),0.766,0.251
