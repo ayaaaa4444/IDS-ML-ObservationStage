@@ -28,6 +28,7 @@ if "capture" not in st.session_state:
         "ports_par_cible": defaultdict(set),
         "alertes_vues": set(),
         "thread": None,
+        "erreur": None,
     }
 
 cap = st.session_state.capture
@@ -41,7 +42,7 @@ def demarrer_capture(etat):
 
     def analyser(pkt):
         if not etat["running"]:
-            return True  # stoppe le sniff
+            return True
         etat["total"] += 1
         if pkt.haslayer(IP):
             ip_src, ip_dst = pkt[IP].src, pkt[IP].dst
@@ -64,8 +65,12 @@ def demarrer_capture(etat):
             else:
                 etat["stats"]["Autre"] += 1
 
-    sniff(iface="Wi-Fi", prn=analyser, store=False,
-          stop_filter=lambda p: not etat["running"])
+    try:
+        sniff(iface="Wi-Fi", prn=analyser, store=False,
+              stop_filter=lambda p: not etat["running"])
+    except Exception as e:
+        etat["erreur"] = str(e)
+        etat["running"] = False
 
 # ============================================================
 # EN-TÊTE
@@ -113,29 +118,35 @@ with tab1:
     model = charger_modele()
     data_scaled, true_labels, labels_texte = charger_donnees()
 
-    nb = st.slider("Nombre de connexions à analyser", 10, 500, 100)
+    nb = st.slider("Nombre de connexions à analyser", 10, 500, 100, key="nb_ml")
+
     if st.button("▶️ Lancer l'analyse ML", type="primary"):
-        preds = model.predict(data_scaled[:nb])
-        reels = true_labels.iloc[:nb].values
+        st.session_state.ml_lancee = True
+        st.session_state.nb_ml_analyse = nb
+
+    if st.session_state.get("ml_lancee", False):
+        nb_actif = st.session_state.nb_ml_analyse
+        preds = model.predict(data_scaled[:nb_actif])
+        reels = true_labels.iloc[:nb_actif].values
         alertes = int(preds.sum())
         correctes = int((preds == reels).sum())
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("📡 Analysées", nb)
+        c1.metric("📡 Analysées", nb_actif)
         c2.metric("🔴 Alertes", alertes)
-        c3.metric("🟢 Normales", nb - alertes)
-        c4.metric("🎯 Précision", f"{correctes/nb*100:.1f}%")
+        c3.metric("🟢 Normales", nb_actif - alertes)
+        c4.metric("🎯 Précision", f"{correctes/nb_actif*100:.1f}%")
 
         g, d = st.columns(2)
         with g:
             st.subheader("Répartition")
             fig, ax = plt.subplots(figsize=(5, 4))
-            ax.pie([nb - alertes, alertes], labels=["Normal", "Attaque"],
+            ax.pie([nb_actif - alertes, alertes], labels=["Normal", "Attaque"],
                    colors=["steelblue", "tomato"], autopct="%1.1f%%", startangle=90)
             st.pyplot(fig)
         with d:
             st.subheader("Types d'attaques")
-            ta = labels_texte.iloc[:nb]
+            ta = labels_texte.iloc[:nb_actif]
             ta = ta[ta != "normal"].value_counts()
             fig2, ax2 = plt.subplots(figsize=(5, 4))
             ta.plot(kind="barh", color="tomato", ax=ax2)
@@ -149,10 +160,14 @@ with tab2:
     st.subheader("Capture du trafic réseau en direct")
     st.info("⚠️ Streamlit doit être lancé en administrateur pour que la capture fonctionne.")
 
+    if cap.get("erreur"):
+        st.error(f"Erreur de capture : {cap['erreur']} — relancez Streamlit en administrateur.")
+
     col_start, col_stop = st.columns(2)
     if col_start.button("▶️ Démarrer la capture", type="primary"):
         if not cap["running"]:
             cap["running"] = True
+            cap["erreur"] = None
             t = threading.Thread(target=demarrer_capture, args=(cap,), daemon=True)
             t.start()
             cap["thread"] = t
@@ -163,21 +178,18 @@ with tab2:
     etat_txt = "🟢 En cours" if cap["running"] else "⚪ Arrêtée"
     st.write(f"**État :** {etat_txt}")
 
-    # Compteurs
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("📦 Paquets totaux", cap["total"])
     k2.metric("TCP", cap["stats"]["TCP"])
     k3.metric("UDP", cap["stats"]["UDP"])
     k4.metric("ICMP", cap["stats"]["ICMP"])
 
-    # Alertes
     st.subheader("🚨 Alertes détectées")
     if cap["alertes"]:
         st.dataframe(pd.DataFrame(cap["alertes"]), use_container_width=True)
     else:
         st.write("Aucune alerte pour le moment.")
 
-    # Rafraîchissement auto quand la capture tourne
     if cap["running"]:
         time.sleep(2)
         st.rerun()
